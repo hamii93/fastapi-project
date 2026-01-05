@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from models import Item
-
+from typing import Optional
 
 app = FastAPI()
 
@@ -17,8 +17,11 @@ async def root():
     return {"message": "Welcome to NextGen Logistics"}
 
 @app.get("/items")
-async def get_inventory():
-    return {"items": inventory_db}
+async def get_inventory(limit : int = 10, search: Optional[str] = None):
+    if search:
+        filtered_items = [item for item in inventory_db if search.lower() in item["name"].lower()]
+        return {"items": filtered_items[:limit]}
+    return {"items": inventory_db[:limit]}
 
 @app.get("/items/{item_id}")
 async def get_item(item_id: int):
@@ -44,4 +47,12 @@ async def update_item(item_id: int, updated_item: Item):
             updated_item.id = item_id 
             inventory_db[index] = updated_item.model_dump()
             return updated_item
+    raise HTTPException(status_code=404, detail="Item not found")
+
+@app.delete("/items/{item_id}")
+async def delete_item(item_id: int):
+    for index, item in enumerate(inventory_db):
+        if item["id"] == item_id:
+            inventory_db.pop(index)
+            return {"detail": "Item deleted"}
     raise HTTPException(status_code=404, detail="Item not found")
